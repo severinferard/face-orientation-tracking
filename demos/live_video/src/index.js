@@ -31,6 +31,7 @@ import { STATE, createDetector } from "./shared/params";
 import { setupStats } from "./shared/stats_panel";
 import { setBackendAndEnvFlags, getDirectionVectors } from "./shared/util";
 import {
+  AttentionTracker,
   drawFaceOrientation,
   getFaceOrientationVector,
 } from "./attention_tracking";
@@ -41,6 +42,8 @@ let startInferenceTime,
 let inferenceTimeSum = 0,
   lastPanelUpdate = 0;
 let rafId;
+
+const attentionTracker = new AttentionTracker();
 
 async function checkGuiUpdate() {
   if (STATE.isTargetFPSChanged || STATE.isSizeOptionChanged) {
@@ -132,8 +135,15 @@ async function renderResult() {
   camera.drawCtx();
   // console.log(faces[0]);
   if (faces[0]) {
-    const orientationVector = getFaceOrientationVector(faces[0].keypoints);
-    drawFaceOrientation(camera.ctx, faces[0], orientationVector);
+    attentionTracker.refreshKeypoints(faces[0].keypoints);
+    // const orientationVector = getFaceOrientationVector(faces[0].keypoints);
+    drawFaceOrientation(
+      camera.ctx,
+      faces[0],
+      attentionTracker.getFaceOrientationVector(),
+      attentionTracker.isFocused() ? "#00ff00" : "#ff0000"
+    );
+    // console.log(attentionTracker.isFocused());
     // console.log(camera.ctx);
   }
 
@@ -174,6 +184,11 @@ async function app() {
   detector = await createDetector();
 
   renderPrediction();
+  document.addEventListener("keydown", (event) => {
+    if (event.code === "KeyC") {
+      attentionTracker.setReference();
+    }
+  });
 }
 
 app();

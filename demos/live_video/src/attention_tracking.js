@@ -3,6 +3,8 @@ const KEYPOINT_INDEX_LEFT_CHEEK = 127;
 const KEYPOINT_INDEX_RIGHT_CHEEK = 356;
 const KEYPOINT_INDEX_NOSE = 6;
 
+const DEFAULT_FOCUS_MARGIN = 20;
+
 let roiOrientationVector = {
   x: 6.152000427246094,
   y: 15.785307884216309,
@@ -37,7 +39,7 @@ export function getFaceOrientationVector(keypoints) {
   };
 }
 
-export function drawFaceOrientation(ctx, face, faceOrientationVector) {
+export function drawFaceOrientation(ctx, face, faceOrientationVector, color) {
   const { box } = face;
   const centerPoint = {
     x: (box.xMax + box.xMin) / 2,
@@ -53,18 +55,72 @@ export function drawFaceOrientation(ctx, face, faceOrientationVector) {
     centerPoint.y + faceOrientationVector.y * 1,
   ];
 
-  console.log(
-    Math.abs(faceOrientationVector.x - roiOrientationVector.x),
-    Math.abs(faceOrientationVector.y - roiOrientationVector.y)
-  );
+  //   console.log(
+  //     Math.abs(faceOrientationVector.x - roiOrientationVector.x),
+  //     Math.abs(faceOrientationVector.y - roiOrientationVector.y)
+  //   );
 
-  if (
-    Math.abs(faceOrientationVector.x - roiOrientationVector.x) < 20 &&
-    Math.abs(faceOrientationVector.y - roiOrientationVector.y) < 20
-  ) {
-    ctx.strokeStyle = "#00ff00";
-  } else {
-    ctx.strokeStyle = "#ff0000";
-  }
+  //   if (
+  //     Math.abs(faceOrientationVector.x - roiOrientationVector.x) < 20 &&
+  //     Math.abs(faceOrientationVector.y - roiOrientationVector.y) < 20
+  //   ) {
+  //     ctx.strokeStyle = "#00ff00";
+  //   } else {
+  //     ctx.strokeStyle = "#ff0000";
+  //   }
+  ctx.strokeStyle = color;
   drawPath(ctx, [start, end]);
+}
+
+export class AttentionTracker {
+  referenceFaceOrientationVector = undefined;
+  currentFaceOrientationVector = undefined;
+  focusMargin = undefined;
+
+  constructor(focusMargin = DEFAULT_FOCUS_MARGIN) {
+    this.focusMargin = focusMargin;
+  }
+
+  refreshKeypoints(keypoints) {
+    this.currentFaceOrientationVector = getFaceOrientationVector(keypoints);
+  }
+
+  setReference() {
+    this.referenceFaceOrientationVector = this.currentFaceOrientationVector;
+  }
+
+  getFaceOrientationVector() {
+    return this.currentFaceOrientationVector;
+  }
+
+  getReferenceFaceOrientationVector() {
+    return this.referenceFaceOrientationVector;
+  }
+
+  getDistToReference() {
+    if (
+      !this.currentFaceOrientationVector ||
+      !this.referenceFaceOrientationVector
+    )
+      return undefined;
+
+    return {
+      x: Math.abs(
+        this.currentFaceOrientationVector.x -
+          this.referenceFaceOrientationVector.x
+      ),
+      y: Math.abs(
+        this.currentFaceOrientationVector.y -
+          this.referenceFaceOrientationVector.y
+      ),
+    };
+  }
+
+  isFocused() {
+    const distance = this.getDistToReference();
+    // console.log(distance);
+
+    if (!distance) return false;
+    return distance.x < this.focusMargin && distance.y < this.focusMargin;
+  }
 }
